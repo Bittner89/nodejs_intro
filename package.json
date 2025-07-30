@@ -1,5 +1,5 @@
 {
-  "name": "nodejs_intro",
+  "name": "blog-api",
   "version": "1.0.0",
   "description": "Node.js Intro Project",
   "homepage": "https://github.com/Bittner89/nodejs_intro#readme",
@@ -12,10 +12,10 @@
   },
   "license": "ISC",
   "author": "Bittner",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node app.js"
   }
 }
