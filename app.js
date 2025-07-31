@@ -16,7 +16,23 @@ let posts = [
 ];
 let nextId = 3;
 
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Hilfsfunktion zum asynchronen Sammeln des Request-Bodys
+function getRequestBody(req) {
+    return new Promise((resolve, reject) => {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        req.on('end', () => {
+            resolve(body);
+        });
+        req.on('error', err => {
+            reject(err);
+        });
+    });
+}
 
 const server = http.createServer(async (req, res) => {
     console.log(`Anfrage erhalten: ${req.method} ${req.url}`);
@@ -48,8 +64,28 @@ const server = http.createServer(async (req, res) => {
             res.end(JSON.stringify({ message: 'Blogbeitrag nicht gefunden' }));
         }
     } else if (req.url === '/posts' && req.method === 'POST') {
-        res.writeHead(201, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ message: 'Neuer Blogbeitrag empfangen (Body wird noch nicht verarbeitet)' }));
+        try {
+            const body = await getRequestBody(req);
+            const newPost = JSON.parse(body);
+
+            if (!newPost.title || !newPost.content || !newPost.author) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ message: 'Fehlende Felder: title, content und author sind erforderlich.' }));
+                return;
+            }
+
+            newPost.id = nextId++;
+            newPost.date = new Date().toISOString().split('T')[0];
+            posts.push(newPost);
+
+            res.writeHead(201, { 'Content-Type': 'application/json' });
+            await delay(200);
+            res.end(JSON.stringify(newPost));
+        } catch (error) {
+            console.error('Fehler beim Parsen der Anfrage oder ungültiges JSON:', error);
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ message: 'Ungültige Anfrage: JSON-Format erwartet oder Daten fehlen.' }));
+        }
     } else {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ message: 'Endpunkt nicht gefunden' }));
@@ -58,8 +94,8 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, hostname, () => {
     console.log(`Server läuft unter http://${hostname}:${port}/`);
-    console.log(`Testen Sie: GET http://${hostname}:${port}/posts`);
-    console.log(`Testen Sie: GET http://${hostname}:${port}/posts/1`);
-    console.log(`Testen Sie: GET http://${hostname}:${port}/posts/99 (für 404 Fehler)`);
-    console.log(`Testen Sie: POST http://${hostname}:${port}/posts (mit curl oder Postman)`);
+    console.log('API-Endpunkte zum Testen:');
+    console.log(`GET http://${hostname}:${port}/posts`);
+    console.log(`GET http://${hostname}:${port}/posts/1`);
+    console.log(`POST http://${hostname}:${port}/posts (mit JSON-Body)`);
 });
